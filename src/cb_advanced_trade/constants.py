@@ -5,21 +5,13 @@ from sys import modules
 
 ROOT: str = dirname(realpath(modules["__main__"].__file__))
 
-ENVIRONMENT: str = "production"  # or: "sandbox"
-
 CACHE: str = join(ROOT, "cache", "cb_advanced_trade")
 
-VERSION: str = "2021-08-27"
+ADVANCED_TRADE: str = "api.coinbase.com"
 
 API: str = "api/v3/brokerage"
 
-ADVANCED_TRADE: dict = {
-    "production": "api.coinbase.com",
-}
-
-MARKET_DATA: dict = {
-    "production": "advanced-trade-ws.coinbase.com",
-}
+MARKET_DATA: str = "advanced-trade-ws.coinbase.com"
 
 ENDPOINTS: dict = {
     "Accounts": "accounts",

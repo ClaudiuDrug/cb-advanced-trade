@@ -2,19 +2,18 @@
 
 from abc import ABC
 from json import JSONDecodeError
-from typing import Union, List
+from typing import List
 
 from requests import Response, HTTPError
-from requests_cache import install_cache
 
-from .constants import ENVIRONMENT, CACHE, API, ADVANCED_TRADE, ENDPOINTS
-from .sessions import BaseSession, AuthSession
+from .constants import API, ADVANCED_TRADE, ENDPOINTS
+from .sessions import AuthSession
 
 
 class AdvancedTrade(ABC):
-    """Advanced Trade API base endpoint."""
+    """Advanced Trade API authenticated base endpoint."""
 
-    _session: Union[BaseSession, AuthSession] = None
+    _url = f"https://{ADVANCED_TRADE}/{API}"
 
     @staticmethod
     def _join(*args, **kwargs) -> str:
@@ -35,15 +34,24 @@ class AdvancedTrade(ABC):
         if 500 <= status < 600:
             return "Server"
 
-    def __init__(self, environment: str, cache: str):
+    def __init__(self, key: str, secret: str, **kwargs):
         """
-        :param environment: The API environment (`production` or `sandbox`).
-        :param cache: The path to be used for caching.
+        **Parameters:**
+            - ``key``: The API key;
+            - ``secret``: The API secret;
+            - ``cache``: Use caching (defaults to: `True`);
+            - ``retries``: Total number of retries to allow (defaults to: 3);
+            - ``backoff``: A backoff factor to apply between attempts after
+              the second try (defaults to: 1);
+            - ``timeout``: How long to wait for the server to send data before
+              giving up (defaults to: 30);
+            - ``debug``: bool - Set to True to log all requests/responses
+              to/from server (defaults to: `False`).
+            - ``logger``: Logger - The handler to be used for logging.
+              If given, and level is above `DEBUG`, all debug messages will be
+              ignored.
         """
-        self._url = f"https://{ADVANCED_TRADE.get(environment)}/{API}"
-
-        if cache is not None:
-            install_cache(cache_name=cache, backend="sqlite", expire_after=180)
+        self._session = AuthSession(key, secret, **kwargs)
 
     def __enter__(self):
         return self
@@ -91,63 +99,7 @@ class AdvancedTrade(ABC):
             )
 
 
-class Endpoint(AdvancedTrade):
-    """Advanced Trade API endpoint."""
-
-    def __init__(self, **kwargs):
-        """
-        **kwargs**:
-        - ``environment``: The API environment: `production` or `sandbox`
-          (defaults to: `production`).
-        - ``cache``: The path to be used for caching.
-        - ``retries``: Total number of retries to allow (defaults to: 3);
-        - ``backoff``: A backoff factor to apply between attempts after the
-          second try (defaults to: 1);
-        - ``timeout``: How long to wait for the server to send data before
-          giving up (defaults to: 30);
-        - ``debug``: bool - Set to True to log all requests/responses to/from server
-          (defaults to: `False`).
-        - ``logger``: Logger - The handler to be used for logging.
-
-        :param kwargs: Additional keyword arguments.
-        """
-        super(Endpoint, self).__init__(
-            environment=kwargs.pop("environment", ENVIRONMENT),
-            cache=kwargs.pop("cache", CACHE),
-        )
-        self._session = BaseSession(**kwargs)
-
-
-class AuthEndpoint(AdvancedTrade):
-    """Advanced Trade API authenticated endpoint."""
-
-    def __init__(self, key: str, secret: str, **kwargs):
-        """
-        **kwargs**:
-            - ``environment``: The API environment: `production` or `sandbox`
-              (defaults to: `production`).
-            - ``cache``: The path to be used for caching.
-            - ``retries``: Total number of retries to allow (defaults to: 3);
-            - ``backoff``: A backoff factor to apply between attempts after the
-              second try (defaults to: 1);
-            - ``timeout``: How long to wait for the server to send data before
-              giving up (defaults to: 30);
-            - ``debug``: bool - Set to True to log all requests/responses
-              to/from server (defaults to: `False`).
-            - ``logger``: Logger - The handler to be used for logging.
-
-        :param key: The API key;
-        :param secret: The API secret;
-        :param kwargs: Additional keyword arguments.
-        """
-        super(AuthEndpoint, self).__init__(
-            environment=kwargs.pop("environment", ENVIRONMENT),
-            cache=kwargs.pop("cache", CACHE),
-        )
-        self._session = AuthSession(key, secret, **kwargs)
-
-
-class Accounts(AuthEndpoint):
+class Accounts(AdvancedTrade):
     """`accounts` endpoint of the Advanced Trade API"""
 
     def get_accounts(self, **kwargs) -> dict:
@@ -175,7 +127,7 @@ class Accounts(AuthEndpoint):
         return self._get(account_uuid)
 
 
-class Orders(AuthEndpoint):
+class Orders(AdvancedTrade):
     """`orders` endpoint of the Advanced Trade API"""
 
     def create_order(self, client_order_id: str, product_id: str, side: str, **kwargs) -> dict:
@@ -398,7 +350,7 @@ class Orders(AuthEndpoint):
         return self._get("historical", order_id, params=kwargs)
 
 
-class Products(AuthEndpoint):
+class Products(AdvancedTrade):
     """ `products` endpoint of the Advanced Trade API."""
 
     def get_products(self, **kwargs) -> dict:
@@ -471,7 +423,7 @@ class Products(AuthEndpoint):
         )
 
 
-class TransactionSummary(AuthEndpoint):
+class TransactionSummary(AdvancedTrade):
     """`transaction_summary` endpoint of the Advanced Trade API."""
 
     def get_transaction_summary(self, **kwargs) -> dict:

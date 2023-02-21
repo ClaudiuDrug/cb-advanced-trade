@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 from json import loads, dumps
-from logging import getLogger, Logger, StreamHandler, Formatter, DEBUG
+from logging import getLogger, Logger, StreamHandler, Formatter, DEBUG, INFO
 from threading import Thread
 from typing import List
 
@@ -17,11 +17,11 @@ class MarketData(object):
 
     # create a logger and set level to debug:
     _log: Logger = getLogger(__name__)
-    _log.setLevel(DEBUG)
+    _log.setLevel(INFO)
 
     # create console handler and set level to debug:
     _console = StreamHandler()
-    _console.setLevel(DEBUG)
+    _console.setLevel(INFO)
 
     # create formatter:
     _formatter = Formatter(
@@ -34,44 +34,41 @@ class MarketData(object):
     # add console to logger:
     _log.addHandler(_console)
 
-    # _hostnames: dict = MARKET_DATA
-
     def __init__(
             self,
             key: str,
             secret: str,
             channel: str,
             product_ids: List[str],
-            environment: str = "production",
             debug: bool = False,
             logger: Logger = None,
     ):
         """
         :param key: The API key;
         :param secret: The API secret;
-        :param environment: The API environment: `production` or `sandbox`
-            (defaults to: `production`).
         :param channel: The channel to subscribe to.
-        :param product_ids: Product IDs as list.
+        :param product_ids: Product IDs as list of strings.
         :param debug: Set to True to log all requests/responses to/from server
             (defaults to: `False`).
-        :param logger: The handler to be used for logging.
+        :param logger: The handler to be used for logging. If given, and level
+            is above `DEBUG`, all debug messages will be ignored.
         """
-        self.__hmac = WSAuth(key=key, secret=secret)
-
+        self._hmac = WSAuth(key=key, secret=secret)
         self._channel = channel
         self._product_ids = product_ids
-
         self._queue = WSQueue()
-        self._debug = debug
+
+        if debug is True:
+            self._log.setLevel(DEBUG)
+            self._console.setLevel(DEBUG)
 
         if logger is not None:
             self._log = logger
 
-        self.debug("Creating a new websocket client instance...")
+        self._log.debug("Creating a new websocket client instance...")
 
         self._websocket = WebSocketApp(
-            url=f"wss://{MARKET_DATA.get(environment)}",
+            url=f"wss://{MARKET_DATA}",
             on_open=self.on_open,
             on_message=self.on_message,
             on_error=self.on_error,
@@ -91,7 +88,7 @@ class MarketData(object):
             kwargs=kwargs
         )
         thread.start()
-        self.debug("Listening for websocket client messages...")
+        self._log.debug("Listening for websocket client messages...")
 
     def close(self):
         self.unsubscribe(self._websocket)
@@ -102,24 +99,26 @@ class MarketData(object):
         """Action taken on websocket open event."""
         self.subscribe(websocket)
 
-    # noinspection PyUnusedLocal
     def on_message(self, websocket: WebSocketApp, message: str):
         """Action taken for each message received."""
         message = loads(message)
+
+        if message.get("type").lower() == "error":
+            self._log.error(f"{message.get('message')}! {message.get('reason')}!")
+            self.close()
+
         self._queue.put(message)
 
-    # noinspection PyUnusedLocal
     def on_close(self, websocket: WebSocketApp, status, reason):
         """Action taken on websocket close event."""
-        self.debug("The websocket client instance was terminated.")
+        self._log.debug("The websocket client instance was terminated.")
 
-    # noinspection PyUnusedLocal
     def on_error(self, websocket: WebSocketApp, exception):
         """Action taken when exception occurs."""
         self._log.error("Websocket client failed!", exc_info=exception)
 
     def subscribe(self, websocket: WebSocketApp):
-        self.debug(
+        self._log.debug(
             f"Subscribing to channel '{self._channel}' "
             f"for product ids '{', '.join(self._product_ids)}'..."
         )
@@ -128,11 +127,11 @@ class MarketData(object):
             "channel": self._channel,
             "product_ids": self._product_ids,
         }
-        self.__hmac.sign(params)
+        self._hmac.sign(params)
         websocket.send(dumps(params))
 
     def unsubscribe(self, websocket: WebSocketApp):
-        self.debug(
+        self._log.debug(
             f"Unsubscribing from channel '{self._channel}' "
             f"for product ids '{', '.join(self._product_ids)}'..."
         )
@@ -142,10 +141,6 @@ class MarketData(object):
             "product_ids": self._product_ids,
         }
         websocket.send(dumps(params))
-
-    def debug(self, message: str):
-        if self._debug is True:
-            self._log.debug(message)
 
 
 __all__ = ["MarketData"]
