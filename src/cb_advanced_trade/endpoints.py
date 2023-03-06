@@ -376,7 +376,7 @@ class Products(AdvancedTrade):
         """
         return self._get(product_id)
 
-    def get_product_candles(self, product_id: str, start: str, end: str, granularity: str = "ONE_DAY") -> dict:
+    def get_product_candles(self, product_id: str, start: str, end: str, granularity: str) -> dict:
         """
         Get rates for a single product by product ID, grouped in buckets.
 

@@ -3,13 +3,13 @@
 from json import loads, dumps
 from logging import getLogger, Logger, StreamHandler, Formatter, DEBUG, INFO
 from threading import Thread
-from typing import List
+from typing import Union, List, Tuple
 
 from websocket import WebSocketApp
 
 from .authentication import WSAuth
 from .constants import MARKET_DATA
-from .utils import WSQueue
+from .utils import WSQueue, as_list
 
 
 class MarketData(object):
@@ -39,7 +39,7 @@ class MarketData(object):
             key: str,
             secret: str,
             channel: str,
-            product_ids: List[str],
+            product_ids: Union[List[str], Tuple[str], str],
             debug: bool = False,
             logger: Logger = None,
     ):
@@ -47,7 +47,7 @@ class MarketData(object):
         :param key: The API key;
         :param secret: The API secret;
         :param channel: The channel to subscribe to.
-        :param product_ids: Product IDs as list of strings.
+        :param product_ids: Product IDs.
         :param debug: Set to True to log all requests/responses to/from server
             (defaults to: `False`).
         :param logger: The handler to be used for logging. If given, and level
@@ -55,7 +55,7 @@ class MarketData(object):
         """
         self._hmac = WSAuth(key=key, secret=secret)
         self._channel = channel
-        self._product_ids = product_ids
+        self._product_ids = as_list(product_ids)
         self._queue = WSQueue()
 
         if debug is True:

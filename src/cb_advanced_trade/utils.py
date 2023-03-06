@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from queue import Queue
-from typing import Union
+from typing import Union, List, Tuple
 
 
 def get_posix() -> float:
@@ -33,6 +33,15 @@ def decode(value: Union[bytes, str], encoding: str = "UTF-8") -> str:
     return value
 
 
+def as_list(values: Union[List[str], Tuple[str], str]) -> List[str]:
+    """Return values as a list object."""
+    if isinstance(values, tuple):
+        return list(values)
+    if isinstance(values, str):
+        return [values]
+    return values
+
+
 class WSQueue(Queue):
     SENTINEL = object()
 
@@ -51,4 +60,4 @@ class WSQueue(Queue):
                 self.task_done()
 
 
-__all__ = ["get_posix", "encode", "decode", "WSQueue"]
+__all__ = ["get_posix", "encode", "decode", "WSQueue", "as_list"]
