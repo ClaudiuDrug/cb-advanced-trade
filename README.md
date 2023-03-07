@@ -1,4 +1,4 @@
-# cb_advanced_trade
+# cb-advanced-trade
 
 Coinbase Advanced Trade API client library.
 
@@ -7,7 +7,7 @@ Coinbase Advanced Trade API client library.
 ### Installation:
 
 ```commandline
-python -m pip install [--upgrade] cb_advanced_trade
+python -m pip install [--upgrade] cb-advanced-trade
 ```
 
 ---
